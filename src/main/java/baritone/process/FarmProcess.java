@@ -122,9 +122,10 @@ public final class FarmProcess extends BaritoneProcessHelper implements IFarmPro
         POTATOES((CropBlock) Blocks.POTATOES),
         BEETROOT((CropBlock) Blocks.BEETROOTS),
         PUMPKIN(Blocks.PUMPKIN, state -> true),
-        MELON(Blocks.MELON, state -> true),
-        NETHERWART(Blocks.NETHER_WART, state -> state.getValue(NetherWartBlock.AGE) >= 3),
-        SUGARCANE(Blocks.SUGAR_CANE, null) {
+        MELON(Blocks.MELON_BLOCK, state -> true),
+        NETHERWART(Blocks.NETHER_WART, state -> state.getValue(BlockNetherWart.AGE) >= 3),
+        COCOA(Blocks.COCOA, state -> state.getValue(BlockCocoa.AGE) >= 2),
+        SUGARCANE(Blocks.REEDS, null) {
             @Override
             public boolean readyToHarvest(Level world, BlockPos pos, BlockState state) {
                 if (Baritone.settings().replantCrops.value) {
@@ -345,15 +346,24 @@ public final class FarmProcess extends BaritoneProcessHelper implements IFarmPro
                 }
             }
         }
+        if (baritone.getInventoryBehavior().throwaway(false, this::isCocoa)) {
+            for (BlockPos pos : openLog) {
+                for (EnumFacing direction : EnumFacing.Plane.HORIZONTAL) {
+                    if (ctx.world().getBlockState(pos.offset(direction)).getBlock() instanceof BlockAir) {
+                        goalz.add(new GoalGetToBlock(pos.offset(direction)));
+                    }
+                }
+            }
+        }
         if (baritone.getInventoryBehavior().throwaway(false, this::isBoneMeal)) {
             for (BlockPos pos : bonemealable) {
                 goalz.add(new GoalBlock(pos));
             }
         }
-        for (Entity entity : ctx.entities()) {
-            if (entity instanceof ItemEntity && entity.onGround()) {
-                ItemEntity ei = (ItemEntity) entity;
-                if (PICKUP_DROPPED.contains(ei.getItem().getItem())) {
+        for (Entity entity : ctx.world().loadedEntityList) {
+            if (entity instanceof EntityItem && entity.onGround) {
+                EntityItem ei = (EntityItem) entity;
+                if (PICKUP_DROPPED.contains(ei.getItem().getItem()) || isCocoa(ei.getItem())) {
                     // +0.1 because of farmland's 0.9375 dummy height lol
                     goalz.add(new GoalBlock(new BetterBlockPos(entity.position().x, entity.position().y + 0.1, entity.position().z)));
                 }
